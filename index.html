@@ -304,8 +304,7 @@
                                 background:#fef9dc;
                                 padding:10px 12px;
                                 border-radius:10px;
-                            ">
-                                ${it.desc}
+                            ">${it.desc.trim()}
                             </div>
                             ` : ''}
                             <label class="done-label"><input type="checkbox" ${it.done?'checked':''} onchange="toggleCheck(${it.oIdx}, '${it.type}')"><span>완료</span></label>
