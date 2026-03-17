@@ -381,8 +381,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const ALLOWED_EMAIL = "maum202171@gmail.com";
 
-    async function login() {
-        const provider = new GoogleAuthProvider();
+    window.login = async function() {
+        const provider = new window.GoogleAuthProvider();
         const result = await window.signInWithPopup(window.auth, provider);
         const user = result.user;
     
@@ -395,7 +395,7 @@ window.addEventListener("DOMContentLoaded", () => {
         await loadFromServer(user.uid);
     }
     
-    async function logout() {
+    window.logout = async function() {
         await signOut(auth);
         alert("로그아웃됨");
     }
