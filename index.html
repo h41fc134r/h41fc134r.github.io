@@ -98,19 +98,73 @@
     <div class="logo-area" onclick="showDashboard()"><div class="logo-icon">M</div><span style="font-weight:900;">모비노기 숙제 리스트</span></div>
     <div id="accList" style="flex:1; overflow-y:auto; padding-top:10px;"></div>
     <button onclick="openAccModal()" style="margin:20px; padding:15px; border:2px dashed #eee; background:none; border-radius:15px; cursor:pointer; font-weight:bold; color:var(--muted);">+ 캐릭터 추가</button>
+    <button onclick="login()" style="margin:10px;">🔐 로그인</button>
+    <button onclick="logout()" style="margin:10px;">🚪 로그아웃</button>
 </aside>
 
 <main id="main"></main>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "여기에_너의_API_KEY",
+  authDomain: "여기에.firebaseapp.com",
+  projectId: "여기에_PROJECT_ID",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+window.auth = auth;
+window.db = db;
+window.signInWithPopup = signInWithPopup;
+window.GoogleAuthProvider = GoogleAuthProvider;
+window.setDoc = setDoc;
+window.getDoc = getDoc;
+window.doc = doc;
+window.onAuthStateChanged = onAuthStateChanged;
+window.signOut = signOut;
+</script>
+    
 <script>
+window.addEventListener("DOMContentLoaded", () => {
     const CAT_INFO = { main: '⚔️ 메인 컨텐츠', trade: '⚖️ 물물교환', craft: '⚒️ 제작/채집' };
     let state = JSON.parse(localStorage.getItem('mabiV36')) || { 
         accs: [], accData: {}, cur: -1, commonItems: [], personalItems: {}, isDash: true, lastReset: 0, gridCol: 3
     };
     let editTarget = null; // 수정 모드 추적용
 
-    function save() { localStorage.setItem('mabiV36', JSON.stringify(state)); render(); }
+    async function save() {
+        // 로컬 저장
+        localStorage.setItem('mabiV36', JSON.stringify(state));
+    
+        // 서버 저장 (로그인 상태일 때만)
+        if (window.auth && window.auth.currentUser) {
+            const uid = auth.currentUser.uid;
+    
+            await setDoc(doc(db, "users", uid), {
+                state: state
+            });
+        }
+    
+        render();
+    }
 
+    async function loadFromServer(uid) {
+        const docRef = doc(db, "users", uid);
+        const docSnap = await getDoc(docRef);
+    
+        if (docSnap.exists()) {
+            state = docSnap.data().state;
+        }
+    
+        render();
+    }
+    
     // [수정] 입력창 초기화 및 닫기
     function closeModal() { 
         document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); 
@@ -325,7 +379,35 @@
     function showDashboard() { state.isDash = true; save(); }
     function selectAcc(name) { state.cur = state.accs.indexOf(name); state.isDash = false; save(); }
 
+    const ALLOWED_EMAIL = "maum202171@gmail.com";
+
+    async function login() {
+        const provider = new GoogleAuthProvider();
+        const result = await window.signInWithPopup(window.auth, provider);
+        const user = result.user;
+    
+        if (user.email !== ALLOWED_EMAIL) {
+            alert("접근 권한 없음");
+            await signOut(auth);
+            return;
+        }
+    
+        await loadFromServer(user.uid);
+    }
+    
+    async function logout() {
+        await signOut(auth);
+        alert("로그아웃됨");
+    }
+
+    window.onAuthStateChanged(window.auth, async (user) => {
+        if (user) {
+            await loadFromServer(user.uid);
+        }
+    });
+    
     checkAndReset(); setInterval(checkAndReset, 60000); render();
+});
 </script>
 </body>
 </html>
